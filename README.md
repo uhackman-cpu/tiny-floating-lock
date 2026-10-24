@@ -7,7 +7,7 @@ A dependency-free Android utility that adds a floating screen-lock button using 
 - Uses TYPE_ACCESSIBILITY_OVERLAY; no "Display over other apps" permission.
 - Android still manages fingerprint, face unlock and device credentials.
 - Drag the button body to move it.
-- Drag the bottom-right handle to resize from 80 dp to 400 dp.
+- Drag the bottom-right handle to resize from 80 px to 400 px.
 - Pinch with two fingers on the button to resize.
 - Long-press the button for the Opacity and Size sliders.
 - Saves size, opacity and position locally.
