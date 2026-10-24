@@ -26,9 +26,9 @@ import android.content.SharedPreferences;
 
 public final class LockAccessibilityService extends AccessibilityService {
     private static final String PREFS = "tiny_floating_lock";
-    private static final int MIN_SIZE_DP = 80;
-    private static final int MAX_SIZE_DP = 400;
-    private static final int DEFAULT_SIZE_DP = 128;
+    private static final int MIN_SIZE_PX = 80;
+    private static final int MAX_SIZE_PX = 400;
+    private static final int DEFAULT_SIZE_PX = 160;
     private static final int DEFAULT_OPACITY = 84;
     private static final long LONG_PRESS_MS = 620L;
 
@@ -42,7 +42,7 @@ public final class LockAccessibilityService extends AccessibilityService {
     private SharedPreferences preferences;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    private int sizeDp = DEFAULT_SIZE_DP;
+    private int sizeDp;
     private int sizePx;
     private int opacityPercent = DEFAULT_OPACITY;
     private float downRawX;
@@ -70,8 +70,8 @@ public final class LockAccessibilityService extends AccessibilityService {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         preferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
-        sizeDp = clamp(preferences.getInt("size_dp", DEFAULT_SIZE_DP), MIN_SIZE_DP, MAX_SIZE_DP);
-        sizePx = dp(sizeDp);
+        sizePx = clamp(preferences.getInt("size_px", DEFAULT_SIZE_PX), MIN_SIZE_PX, MAX_SIZE_PX);
+        sizeDp = pxToDp(sizePx);
         opacityPercent = clamp(preferences.getInt("opacity", DEFAULT_OPACITY), 15, 100);
         createFloatingButton();
     }
@@ -241,8 +241,8 @@ public final class LockAccessibilityService extends AccessibilityService {
     }
 
     private void updateSizePx(int requestedPx) {
-        sizePx = clamp(requestedPx, dp(MIN_SIZE_DP), dp(MAX_SIZE_DP));
-        sizeDp = clamp(Math.round(sizePx / getResources().getDisplayMetrics().density), MIN_SIZE_DP, MAX_SIZE_DP);
+        sizePx = clamp(requestedPx, MIN_SIZE_PX, MAX_SIZE_PX);
+        sizeDp = pxToDp(sizePx);
         if (overlayParams != null) {
             overlayParams.width = sizePx;
             overlayParams.height = sizePx;
@@ -255,7 +255,7 @@ public final class LockAccessibilityService extends AccessibilityService {
     private void updateButtonVisuals() {
         if (lockButton != null) {
             lockButton.setAlpha(opacityPercent / 100f);
-            lockButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(26f, Math.min(86f, sizeDp * 0.34f)));
+            lockButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(16f, Math.min(86f, sizeDp * 0.58f)));
             lockButton.setBackground(circleDrawable(Color.rgb(20, 32, 48), Color.WHITE, Math.max(dp(1), dp(sizeDp / 80))));
         }
     }
@@ -298,15 +298,15 @@ public final class LockAccessibilityService extends AccessibilityService {
         TextView sizeLabel = textLabel("", 14, 0xFF243447, true);
         panel.addView(sizeLabel, topMargin(matchWrap(), 8));
         SeekBar sizeSeek = new SeekBar(this);
-        sizeSeek.setMax(MAX_SIZE_DP - MIN_SIZE_DP);
-        sizeSeek.setProgress(sizeDp - MIN_SIZE_DP);
+        sizeSeek.setMax(MAX_SIZE_PX - MIN_SIZE_PX);
+        sizeSeek.setProgress(sizePx - MIN_SIZE_PX);
         panel.addView(sizeSeek, matchWrap());
-        sizeLabel.setText("Button size: " + sizeDp + " dp");
+        sizeLabel.setText("Button size: " + sizePx + " px");
         sizeSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser) updateSizePx(dp(MIN_SIZE_DP + progress));
-                sizeLabel.setText("Button size: " + sizeDp + " dp");
+                if (fromUser) updateSizePx(MIN_SIZE_PX + progress);
+                sizeLabel.setText("Button size: " + sizePx + " px");
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) { }
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
@@ -430,7 +430,7 @@ public final class LockAccessibilityService extends AccessibilityService {
     }
 
     private void saveSize() {
-        if (preferences != null) preferences.edit().putInt("size_dp", sizeDp).apply();
+        if (preferences != null) preferences.edit().putInt("size_px", sizePx).apply();
     }
 
     private Point screenSize() {
@@ -442,6 +442,10 @@ public final class LockAccessibilityService extends AccessibilityService {
             point.y = getResources().getDisplayMetrics().heightPixels;
         }
         return point;
+    }
+
+    private int pxToDp(int valuePx) {
+        return Math.round(valuePx / getResources().getDisplayMetrics().density);
     }
 
     private int dp(float value) {
