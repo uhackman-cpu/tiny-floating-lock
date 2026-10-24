@@ -34,7 +34,7 @@ public final class LockAccessibilityService extends AccessibilityService {
 
     private WindowManager windowManager;
     private WindowManager.LayoutParams overlayParams;
-    private View overlayRoot;
+    private FrameLayout overlayRoot;
     private TextView lockButton;
     private TextView resizeHandle;
     private View controlsPanel;
