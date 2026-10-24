@@ -24,7 +24,7 @@ import android.widget.Toast;
 
 import android.content.SharedPreferences;
 
-public final class LockAccessibilityService extends AccessibilityService {
+public final class LockAccessibilityService extends AccessibilityService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String PREFS = "tiny_floating_lock";
     private static final int MIN_SIZE_PX = 80;
     private static final int MAX_SIZE_PX = 400;
@@ -36,7 +36,6 @@ public final class LockAccessibilityService extends AccessibilityService {
     private WindowManager.LayoutParams overlayParams;
     private FrameLayout overlayRoot;
     private TextView lockButton;
-    private TextView resizeHandle;
     private View controlsPanel;
     private WindowManager.LayoutParams controlsParams;
     private SharedPreferences preferences;
@@ -69,6 +68,7 @@ public final class LockAccessibilityService extends AccessibilityService {
         super.onServiceConnected();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         preferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        preferences.registerOnSharedPreferenceChangeListener(this);
         touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
         sizePx = clamp(preferences.getInt("size_px", DEFAULT_SIZE_PX), MIN_SIZE_PX, MAX_SIZE_PX);
         sizeDp = pxToDp(sizePx);
@@ -88,7 +88,7 @@ public final class LockAccessibilityService extends AccessibilityService {
         lockButton.setIncludeFontPadding(false);
         lockButton.setTextColor(Color.WHITE);
         lockButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        lockButton.setContentDescription("Lock screen. Drag to move; long press for appearance settings; use the bottom-right handle to resize.");
+        lockButton.setContentDescription("Lock screen. Drag to move. Change size and transparency in the app settings.");
         lockButton.setBackground(circleDrawable(Color.rgb(20, 32, 48), Color.WHITE, dp(2)));
         lockButton.setAlpha(opacityPercent / 100f);
         FrameLayout.LayoutParams buttonParams = new FrameLayout.LayoutParams(
@@ -97,17 +97,6 @@ public final class LockAccessibilityService extends AccessibilityService {
         );
         overlayRoot.addView(lockButton, buttonParams);
         lockButton.setOnTouchListener(this::handleButtonTouch);
-
-        resizeHandle = new TextView(this);
-        resizeHandle.setText("↘");
-        resizeHandle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        resizeHandle.setTextColor(Color.rgb(20, 32, 48));
-        resizeHandle.setGravity(Gravity.CENTER);
-        resizeHandle.setContentDescription("Drag to resize the lock button");
-        resizeHandle.setBackground(circleDrawable(0xEFFFFFFF, 0xFFB8C2CC, dp(1)));
-        FrameLayout.LayoutParams handleParams = new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.BOTTOM | Gravity.END);
-        overlayRoot.addView(resizeHandle, handleParams);
-        resizeHandle.setOnTouchListener(this::handleResizeTouch);
 
         Point screen = screenSize();
         int initialX = preferences.getInt("x", Math.max(dp(8), screen.x - sizePx - dp(14)));
@@ -461,6 +450,24 @@ public final class LockAccessibilityService extends AccessibilityService {
     }
 
     @Override
+    public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+        if (prefs == null) return;
+        if ("size_px".equals(key)) updateSizePx(prefs.getInt("size_px", DEFAULT_SIZE_PX));
+        if ("opacity".equals(key)) {
+            opacityPercent = clamp(prefs.getInt("opacity", DEFAULT_OPACITY), 10, 100);
+            updateButtonVisuals();
+        }
+        if ("x".equals(key) || "y".equals(key)) {
+            if (overlayParams != null) {
+                overlayParams.x = prefs.getInt("x", overlayParams.x);
+                overlayParams.y = prefs.getInt("y", overlayParams.y);
+                clampOverlayPosition();
+                updateOverlay();
+            }
+        }
+    }
+
+    @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         // No window text or content is needed for this workflow.
     }
@@ -473,6 +480,7 @@ public final class LockAccessibilityService extends AccessibilityService {
     @Override
     public void onDestroy() {
         handler.removeCallbacks(longPressAction);
+        if (preferences != null) preferences.unregisterOnSharedPreferenceChangeListener(this);
         dismissControls();
         if (windowManager != null && overlayRoot != null) {
             try {
@@ -483,7 +491,6 @@ public final class LockAccessibilityService extends AccessibilityService {
         }
         overlayRoot = null;
         lockButton = null;
-        resizeHandle = null;
         super.onDestroy();
     }
 }
