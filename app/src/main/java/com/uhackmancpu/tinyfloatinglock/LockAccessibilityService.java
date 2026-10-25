@@ -51,6 +51,9 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     private boolean volumeGestureResolved;
     private float volumeGestureStartY;
     private int volumeGestureStartLevel;
+    private TextView volumeIndicatorView;
+    private WindowManager.LayoutParams volumeIndicatorParams;
+    private final Runnable hideVolumeIndicator = () -> dismissVolumeIndicator();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long lockdownSearchDeadlineElapsed;
 
@@ -240,6 +243,7 @@ public final class LockAccessibilityService extends AccessibilityService impleme
 
                     if (volumeGestureActive) {
                         adjustMediaVolumeForDrag(dy);
+                        showVolumeIndicator();
                         return true;
                     }
 
@@ -449,6 +453,69 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         int stepPixels = Math.max(dp(24), touchSlop * 2);
         int levelDelta = Math.round(-deltaY / (float) stepPixels);
         setMediaVolume(clamp(volumeGestureStartLevel + levelDelta, 0, max));
+    }
+
+    private void showVolumeIndicator() {
+        if (windowManager == null || overlayParams == null) return;
+        int max = getMediaVolumeMax();
+        int current = clamp(getMediaVolume(), 0, max);
+        int percent = Math.round(current * 100f / max);
+        int filled = Math.round(percent / 10f);
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < 10; i++) bar.append(i < filled ? "▰" : "▱");
+
+        if (volumeIndicatorView == null) {
+            volumeIndicatorView = textLabel("", 15, Color.WHITE, true);
+            volumeIndicatorView.setGravity(Gravity.CENTER);
+            volumeIndicatorView.setPadding(dp(16), dp(10), dp(16), dp(10));
+            volumeIndicatorView.setElevation(dp(10));
+            volumeIndicatorView.setBackground(roundRect(0xF0222D3A, dp(16), 0xFF65758B));
+            volumeIndicatorParams = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    PixelFormat.TRANSLUCENT
+            );
+            volumeIndicatorParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+            volumeIndicatorParams.setTitle("Tiny Floating Lock volume level");
+            try {
+                windowManager.addView(volumeIndicatorView, volumeIndicatorParams);
+            } catch (WindowManager.BadTokenException | IllegalStateException exception) {
+                volumeIndicatorView = null;
+                volumeIndicatorParams = null;
+                return;
+            }
+        }
+
+        volumeIndicatorView.setText("♪  Volume " + percent + "%  " + bar);
+        Point screen = screenSize();
+        volumeIndicatorParams.x = 0;
+        volumeIndicatorParams.y = clamp(overlayParams.y - dp(64), dp(12), Math.max(dp(12), screen.y - dp(70)));
+        try {
+            if (volumeIndicatorView.isAttachedToWindow()) {
+                windowManager.updateViewLayout(volumeIndicatorView, volumeIndicatorParams);
+            }
+        } catch (IllegalArgumentException | WindowManager.BadTokenException ignored) {
+            // The indicator may be in the process of being detached.
+        }
+        handler.removeCallbacks(hideVolumeIndicator);
+        handler.postDelayed(hideVolumeIndicator, 1100L);
+    }
+
+    private void dismissVolumeIndicator() {
+        handler.removeCallbacks(hideVolumeIndicator);
+        if (windowManager != null && volumeIndicatorView != null) {
+            try {
+                windowManager.removeView(volumeIndicatorView);
+            } catch (IllegalArgumentException ignored) {
+                // The indicator may already have been removed.
+            }
+        }
+        volumeIndicatorView = null;
+        volumeIndicatorParams = null;
     }
 
     private void updateSizePx(int requestedPx) {
@@ -728,6 +795,8 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         handler.removeCallbacks(longPressAction);
         handler.removeCallbacks(pendingSingleTap);
         handler.removeCallbacks(scanForLockdown);
+        handler.removeCallbacks(hideVolumeIndicator);
+        dismissVolumeIndicator();
         lockdownSearchDeadlineElapsed = 0L;
         if (preferences != null) preferences.unregisterOnSharedPreferenceChangeListener(this);
         dismissControls();
