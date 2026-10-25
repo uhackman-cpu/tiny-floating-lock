@@ -1,4 +1,4 @@
-name: Capture Play Store Screenshots
+name: Prepare Play Store Assets and Screenshots
 
 on:
   workflow_dispatch:
@@ -7,6 +7,46 @@ permissions:
   contents: read
 
 jobs:
+  graphics:
+    name: Generate app icon and feature graphic
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install SVG and PNG tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin imagemagick
+
+      - name: Render store graphics to required sizes
+        run: |
+          set -euo pipefail
+          mkdir -p play-store-assets
+          rsvg-convert --width 512 --height 512 --format png \
+            --output /tmp/app-icon.png store-assets/app-icon.svg
+          convert /tmp/app-icon.png -resize 512x512! -depth 8 PNG32:play-store-assets/app-icon-512x512.png
+
+          rsvg-convert --width 1024 --height 500 --format png \
+            --output /tmp/feature-graphic.png store-assets/feature-graphic.svg
+          convert /tmp/feature-graphic.png -background '#071522' -alpha remove -alpha off \
+            -resize 1024x500! -depth 8 PNG24:play-store-assets/feature-graphic-1024x500.png
+
+          file play-store-assets/*
+          identify -format '%f %wx%h %[channels]\n' play-store-assets/*
+
+      - name: Include listing copy
+        run: cp docs/play-store-listing.md play-store-assets/
+
+      - name: Upload Play Store graphics
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-floating-lock-play-store-graphics
+          path: play-store-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
   screenshots:
     name: Capture real app UI from Android emulator
     runs-on: ubuntu-latest
@@ -54,8 +94,6 @@ jobs:
 
             adb shell wm size 1080x1920
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-
-            # Enable the app's accessibility service using the debug application ID.
             adb shell settings put secure enabled_accessibility_services "$SERVICE_COMPONENT"
             adb shell settings put secure accessibility_enabled 1
             sleep 5
@@ -70,7 +108,6 @@ jobs:
             adb shell screencap -p /sdcard/02-floating-lock-overlay.png
             adb pull /sdcard/02-floating-lock-overlay.png store-screenshots/02-floating-lock-overlay.png
 
-            # Long press on the floating button to open quick controls.
             CX=958
             CY=960
             adb shell input swipe "$CX" "$CY" "$CX" "$CY" 900
@@ -78,7 +115,6 @@ jobs:
             adb shell screencap -p /sdcard/03-quick-controls.png
             adb pull /sdcard/03-quick-controls.png store-screenshots/03-quick-controls.png
 
-            # Dismiss the panel, then demonstrate double-tap-and-drag volume control.
             adb shell input keyevent 3
             sleep 1
             adb shell input tap "$CX" "$CY"
@@ -90,11 +126,8 @@ jobs:
             adb pull /sdcard/04-volume-indicator.png store-screenshots/04-volume-indicator.png
             wait "$SWIPE_PID" || true
 
-            # Leave the emulator in a clean state.
             adb shell settings put secure enabled_accessibility_services ""
             adb shell settings put secure accessibility_enabled 0
-
-            # Ensure all expected files are non-empty PNGs.
             for file in store-screenshots/*.png; do
               test -s "$file"
               file "$file"

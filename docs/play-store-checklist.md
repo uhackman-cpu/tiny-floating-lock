@@ -11,11 +11,11 @@
 - Store listing draft: `docs/play-store-listing.md`
 - Privacy policy source: `site/privacy-policy.html`
 
-## Assets prepared in the repository
-- App icon SVG source: `store-assets/app-icon.svg`
-- Feature graphic SVG source: `store-assets/feature-graphic.svg`
-- Run the manual workflow **Generate Play Store Graphic Assets** to create a 512×512 PNG icon and 1024×500 PNG feature graphic.
-- Run the manual workflow **Capture Play Store Screenshots** to build real emulator screenshots; inspect them before submitting.
+## Store assets
+- Editable vector icon source: `store-assets/app-icon.svg`
+- Editable vector feature graphic source: `store-assets/feature-graphic.svg`
+- Run the manual workflow **Prepare Play Store Assets and Screenshots**. It creates two artifacts: `tiny-floating-lock-play-store-graphics` (512×512 icon, 1024×500 feature graphic, listing copy) and `tiny-floating-lock-play-store-screenshots` (emulator screenshots).
+- Inspect every screenshot before submitting it; automated capture is not a substitute for a real-device review.
 
 ## Remaining steps before production release
 1. Create the Google Play Console developer account and complete Google's identity/contact verification. Pay the registration fee directly to Google; never share login credentials or OTPs.
