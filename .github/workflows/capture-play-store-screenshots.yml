@@ -1,0 +1,94 @@
+name: Capture Play Store Screenshots
+
+on:
+  push:
+    branches: ['feature/in-app-appearance-controls']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    name: Capture real app UI from Android emulator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK for screenshot capture
+        run: gradle --no-daemon assembleDebug
+
+      - name: Capture screenshots on a Pixel 2 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none -camera-front none
+          script: |
+            set -euo pipefail
+            mkdir -p store-screenshots
+            adb shell wm size 1080x1920
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell settings put secure enabled_accessibility_services com.uhackmancpu.tinyfloatinglock/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService
+            adb shell settings put secure accessibility_enabled 1
+            sleep 4
+            adb shell am start -n com.uhackmancpu.tinyfloatinglock/.MainActivity
+            sleep 3
+            adb shell screencap -p /sdcard/01-appearance-settings.png
+            adb pull /sdcard/01-appearance-settings.png store-screenshots/01-appearance-settings.png
+            adb shell input keyevent 3
+            sleep 2
+            adb shell screencap -p /sdcard/02-floating-lock-overlay.png
+            adb pull /sdcard/02-floating-lock-overlay.png store-screenshots/02-floating-lock-overlay.png
+            CX=958
+            CY=960
+            adb shell input swipe $CX $CY $((CX+1)) $((CY+1)) 1000
+            sleep 1
+            adb shell screencap -p /sdcard/03-quick-controls.png
+            adb pull /sdcard/03-quick-controls.png store-screenshots/03-quick-controls.png
+            adb shell settings put secure enabled_accessibility_services ""
+            adb shell settings put secure accessibility_enabled 0
+            sleep 2
+            adb shell settings put secure enabled_accessibility_services com.uhackmancpu.tinyfloatinglock/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService
+            adb shell settings put secure accessibility_enabled 1
+            sleep 2
+            adb shell input keyevent 3
+            sleep 1
+            adb shell input tap $CX $CY
+            sleep 0.05
+            (adb shell input swipe $CX $CY $CX 650 1200) &
+            SWIPE_PID=$!
+            sleep 0.35
+            adb shell screencap -p /sdcard/04-volume-indicator.png
+            adb pull /sdcard/04-volume-indicator.png store-screenshots/04-volume-indicator.png
+            wait "$SWIPE_PID" || true
+
+      - name: Upload Play Store screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-floating-lock-play-store-screenshots
+          path: store-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 30
