@@ -14,6 +14,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Switch;
 
 public final class MainActivity extends Activity {
     private static final String PREFS = "tiny_floating_lock";
@@ -86,11 +87,27 @@ public final class MainActivity extends Activity {
             public void onStopTrackingTouch(SeekBar bar) {}
         });
 
+        page.addView(label("Gesture controls", 18, Color.WHITE, true), top(30));
+        Switch volumeGestureSwitch = new Switch(this);
+        volumeGestureSwitch.setText("Double-tap + drag volume control");
+        volumeGestureSwitch.setTextColor(Color.WHITE);
+        volumeGestureSwitch.setChecked(prefs.getBoolean("volume_drag_enabled", true));
+        page.addView(volumeGestureSwitch, top(8));
+        volumeGestureSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                prefs.edit().putBoolean("volume_drag_enabled", isChecked).apply());
+
+        TextView gestureHint = label(
+                "ON: After a double tap, drag up to increase media volume or down to decrease it. "
+                        + "OFF: vertical dragging moves the floating button normally.",
+                13, 0xFFB8C7D8, false);
+        gestureHint.setLineSpacing(dp(3), 1f);
+        page.addView(gestureHint, top(6));
+
         TextView accessibility = button("Enable / manage floating lock");
         page.addView(accessibility, top(28));
         accessibility.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
 
-        TextView note = label("Changes are saved automatically. The floating lock has no resize handle—use these sliders to change its size and transparency. Drag the lock to move it.", 14, 0xFFB8C7D8, false);
+        TextView note = label("Single tap: lock screen. Double tap: open Android Power Menu. Hold: open quick controls with media-volume, size and opacity sliders. Drag the lock to move it; use a two-finger pinch to resize it.", 14, 0xFFB8C7D8, false);
         note.setLineSpacing(dp(4), 1f);
         page.addView(note, top(18));
         setContentView(scroll);
