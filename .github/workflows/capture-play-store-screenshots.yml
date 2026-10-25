@@ -1,8 +1,6 @@
 name: Capture Play Store Screenshots
 
 on:
-  push:
-    branches: ['feature/in-app-appearance-controls']
   workflow_dispatch:
 
 permissions:
@@ -12,6 +10,7 @@ jobs:
   screenshots:
     name: Capture real app UI from Android emulator
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - name: Check out source
         uses: actions/checkout@v4
