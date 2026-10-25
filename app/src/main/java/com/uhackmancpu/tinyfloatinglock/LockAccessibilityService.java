@@ -31,6 +31,7 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     private static final int DEFAULT_SIZE_PX = 160;
     private static final int DEFAULT_OPACITY = 84;
     private static final long LONG_PRESS_MS = 620L;
+    private static final long DOUBLE_TAP_MS = android.view.ViewConfiguration.getDoubleTapTimeout();
 
     private WindowManager windowManager;
     private WindowManager.LayoutParams overlayParams;
@@ -52,6 +53,8 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     private boolean didMove;
     private boolean longPressTriggered;
     private boolean pinching;
+    private long lastTapTime;
+    private final Runnable pendingSingleTap = this::lockScreenNow;
     private float pinchStartDistance;
     private int pinchStartSizePx;
     private float resizeStartX;
@@ -178,7 +181,15 @@ public final class LockAccessibilityService extends AccessibilityService impleme
             case MotionEvent.ACTION_UP:
                 handler.removeCallbacks(longPressAction);
                 if (!didMove && !longPressTriggered && !pinching) {
-                    lockScreenNow();
+                    long now = android.os.SystemClock.elapsedRealtime();
+                    if (lastTapTime > 0 && now - lastTapTime <= DOUBLE_TAP_MS) {
+                        handler.removeCallbacks(pendingSingleTap);
+                        lastTapTime = 0;
+                        openHardLockMenu();
+                    } else {
+                        lastTapTime = now;
+                        handler.postDelayed(pendingSingleTap, DOUBLE_TAP_MS);
+                    }
                 } else {
                     savePosition();
                     saveSize();
@@ -215,6 +226,22 @@ public final class LockAccessibilityService extends AccessibilityService impleme
                 return true;
             default:
                 return true;
+        }
+    }
+
+
+    private void openHardLockMenu() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            // Android does not let ordinary apps silently disable biometrics.
+            // Open the system power menu so the user can choose Lockdown, if enabled.
+            boolean opened = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+            if (opened) {
+                Toast.makeText(this, "Choose Lockdown in the power menu to require PIN, pattern, or password. If Lockdown is not shown, enable it in your phone security settings.", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Could not open the power menu. Use your phone's power menu and choose Lockdown.", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            Toast.makeText(this, "Hard Lock requires Android 9 or newer. Use the power menu Lockdown option if available.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -480,6 +507,7 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     @Override
     public void onDestroy() {
         handler.removeCallbacks(longPressAction);
+        handler.removeCallbacks(pendingSingleTap);
         if (preferences != null) preferences.unregisterOnSharedPreferenceChangeListener(this);
         dismissControls();
         if (windowManager != null && overlayRoot != null) {
