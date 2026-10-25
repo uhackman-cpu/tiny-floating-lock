@@ -1,6 +1,6 @@
 # Tiny Floating Lock — Play Store release checklist
 
-## Project status
+## Project
 - App name: Tiny Floating Lock
 - Developer name: Dev Kashyap
 - Support email: davidgamer7374@gmail.com
@@ -8,25 +8,34 @@
 - Current package ID: `com.uhackmancpu.tinyfloatinglock`
 - Minimum Android version: Android 9 (API 28)
 - Target API: 36 (Android 16)
-- Privacy policy draft: `docs/privacy-policy.html`
+- Store listing draft: `docs/play-store-listing.md`
+- Privacy policy source: `site/privacy-policy.html`
 
-## Before creating a Play Console release
-1. Create a Google Play Console developer account and complete Google's identity/contact verification. The account registration fee is paid directly to Google; never share login credentials or OTPs.
-2. Decide and confirm the final package ID. Once published, changing the package ID means creating a different app listing.
-3. Review the privacy policy and publish it at a publicly accessible, stable HTTPS URL. Do not submit a GitHub source URL as the policy URL. Enable GitHub Pages for this repository with the `docs/` folder as the publishing source, or host the policy on another site. The likely GitHub Pages path is `https://uhackman-cpu.github.io/tiny-floating-lock/privacy-policy.html` after Pages is enabled and the page is verified publicly.
-4. Create a release upload keystore and keep a secure backup. Never commit the keystore or passwords to the repository. Configure GitHub Actions repository secrets:
+## Assets prepared in the repository
+- App icon SVG source: `store-assets/app-icon.svg`
+- Feature graphic SVG source: `store-assets/feature-graphic.svg`
+- Run the manual workflow **Generate Play Store Graphic Assets** to create a 512×512 PNG icon and 1024×500 PNG feature graphic.
+- Run the manual workflow **Capture Play Store Screenshots** to build real emulator screenshots; inspect them before submitting.
+
+## Remaining steps before production release
+1. Create the Google Play Console developer account and complete Google's identity/contact verification. Pay the registration fee directly to Google; never share login credentials or OTPs.
+2. Confirm the final package ID. Changing it after publishing means creating a different app listing.
+3. Publish the privacy policy at a stable, public HTTPS URL and verify it in an incognito browser. The workflow deploys the contents of `site/` to GitHub Pages.
+   - Easiest route: repository Settings → Pages → Build and deployment → Source → **GitHub Actions**, then run **Deploy Tiny Floating Lock Privacy Policy**.
+   - Alternative automation: add a fine-grained personal access token as repository Actions secret `PAGES_TOKEN`, granting repository administration and Pages write access; the workflow can then enable Pages automatically. Never paste this token into chat or commit it.
+4. Create an upload keystore on your own trusted device and keep at least one secure backup. Never commit the keystore or passwords. Add these repository Actions secrets:
    - `ANDROID_KEYSTORE_BASE64`: base64-encoded upload keystore file
    - `ANDROID_KEYSTORE_PASSWORD`
    - `ANDROID_KEY_ALIAS`
    - `ANDROID_KEY_PASSWORD`
-5. Run the workflow `Signed Play Store AAB` manually after the four secrets are set. Download the `tiny-floating-lock-play-store-aab` artifact and validate it before upload.
-6. Test the release build on physical devices: enable/disable accessibility service, single-tap lock, double-tap power menu/Lockdown handling, long-press controls, volume slider, double-tap vertical volume drag and its indicator, screen rotation, reboot, and service restart.
-7. Complete Play Console store listing: short and full description, high-resolution app icon, feature graphic, phone screenshots, category, contact email, and content rating.
-8. Complete App content declarations accurately: Data safety, ads declaration, target audience, content rating, privacy policy, and Accessibility API declaration where requested. This app's Accessibility Service is core functionality; explain it accurately and do not claim unrelated capabilities.
-9. Because the developer account has not yet been created, check the account type and any current testing requirement in Play Console. New personal accounts created after 13 November 2023 generally must complete a closed test with at least 12 opted-in testers continuously for 14 days before applying for production access.
-10. Upload the AAB to internal testing first. Fix any Play Console warnings, run closed testing if required, then apply for production access and submit for review.
+5. Run **Signed Play Store AAB** manually after the four signing secrets are set. Download the `tiny-floating-lock-play-store-aab` artifact and verify its signature before uploading. Do not upload the unsigned AAB from the local-signing workflow.
+6. Test the signed release on physical devices: enable/disable accessibility service, single-tap lock, double-tap power menu/Lockdown handling, long-press controls, volume slider, double-tap vertical volume drag and indicator, screen rotation, reboot, and service restart.
+7. Complete the listing with the short/full description, 512×512 app icon, 1024×500 feature graphic, phone screenshots, category, email, and content rating.
+8. Complete App content declarations accurately: Data safety, ads declaration, target audience, content rating, privacy policy, and Accessibility API declaration wherever requested. Accessibility Service is core functionality; describe it accurately and provide disclosure/consent if Play Console requires it.
+9. Check the account type and current testing requirement inside Play Console. New personal developer accounts created after 13 November 2023 have generally been required to complete a closed test with at least 12 opted-in testers for 14 continuous days before applying for production access; verify the current requirement for this account.
+10. Upload to internal testing first. Resolve Play Console warnings, complete any required closed test, apply for production access, and then submit for review.
 
 ## Important
-- The privacy policy reflects the current no-ads/no-network implementation. If ads or analytics are added later, update the policy and Play Console declarations before shipping that version.
-- The Play Store review decision is made by Google; a successful build does not guarantee approval.
-- Never share Google account passwords, one-time codes, or keystore passwords in chat.
+- The policy describes the current no-ads/no-network implementation. If ads or analytics are added, update the policy and Play Console declarations before releasing that version.
+- A successful build does not guarantee Google Play approval.
+- Never share Google account passwords, OTPs, or keystore passwords in chat.

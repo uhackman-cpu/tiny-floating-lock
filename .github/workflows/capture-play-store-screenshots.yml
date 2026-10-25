@@ -10,7 +10,7 @@ jobs:
   screenshots:
     name: Capture real app UI from Android emulator
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -48,41 +48,57 @@ jobs:
           script: |
             set -euo pipefail
             mkdir -p store-screenshots
+            APP_ID="com.uhackmancpu.tinyfloatinglock.debug"
+            SERVICE_COMPONENT="$APP_ID/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService"
+            ACTIVITY_COMPONENT="$APP_ID/com.uhackmancpu.tinyfloatinglock.MainActivity"
+
             adb shell wm size 1080x1920
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell settings put secure enabled_accessibility_services com.uhackmancpu.tinyfloatinglock/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService
+
+            # Enable the app's accessibility service using the debug application ID.
+            adb shell settings put secure enabled_accessibility_services "$SERVICE_COMPONENT"
             adb shell settings put secure accessibility_enabled 1
-            sleep 4
-            adb shell am start -n com.uhackmancpu.tinyfloatinglock/.MainActivity
+            sleep 5
+
+            adb shell am start -n "$ACTIVITY_COMPONENT"
             sleep 3
             adb shell screencap -p /sdcard/01-appearance-settings.png
             adb pull /sdcard/01-appearance-settings.png store-screenshots/01-appearance-settings.png
+
             adb shell input keyevent 3
             sleep 2
             adb shell screencap -p /sdcard/02-floating-lock-overlay.png
             adb pull /sdcard/02-floating-lock-overlay.png store-screenshots/02-floating-lock-overlay.png
+
+            # Long press on the floating button to open quick controls.
             CX=958
             CY=960
-            adb shell input swipe $CX $CY $((CX+1)) $((CY+1)) 1000
+            adb shell input swipe "$CX" "$CY" "$CX" "$CY" 900
             sleep 1
             adb shell screencap -p /sdcard/03-quick-controls.png
             adb pull /sdcard/03-quick-controls.png store-screenshots/03-quick-controls.png
-            adb shell settings put secure enabled_accessibility_services ""
-            adb shell settings put secure accessibility_enabled 0
-            sleep 2
-            adb shell settings put secure enabled_accessibility_services com.uhackmancpu.tinyfloatinglock/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService
-            adb shell settings put secure accessibility_enabled 1
-            sleep 2
+
+            # Dismiss the panel, then demonstrate double-tap-and-drag volume control.
             adb shell input keyevent 3
             sleep 1
-            adb shell input tap $CX $CY
-            sleep 0.05
-            (adb shell input swipe $CX $CY $CX 650 1200) &
+            adb shell input tap "$CX" "$CY"
+            sleep 0.08
+            (adb shell input swipe "$CX" "$CY" "$CX" 650 1200) &
             SWIPE_PID=$!
             sleep 0.35
             adb shell screencap -p /sdcard/04-volume-indicator.png
             adb pull /sdcard/04-volume-indicator.png store-screenshots/04-volume-indicator.png
             wait "$SWIPE_PID" || true
+
+            # Leave the emulator in a clean state.
+            adb shell settings put secure enabled_accessibility_services ""
+            adb shell settings put secure accessibility_enabled 0
+
+            # Ensure all expected files are non-empty PNGs.
+            for file in store-screenshots/*.png; do
+              test -s "$file"
+              file "$file"
+            done
 
       - name: Upload Play Store screenshots
         uses: actions/upload-artifact@v4
