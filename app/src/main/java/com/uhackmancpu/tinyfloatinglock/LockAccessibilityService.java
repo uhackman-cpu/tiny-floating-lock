@@ -16,6 +16,9 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
+import java.util.List;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -41,6 +44,28 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     private WindowManager.LayoutParams controlsParams;
     private SharedPreferences preferences;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private long lockdownSearchDeadlineElapsed;
+
+    // Only runs briefly after a double tap, while the system power menu is expected to be open.
+    private final Runnable scanForLockdown = new Runnable() {
+        @Override
+        public void run() {
+            if (lockdownSearchDeadlineElapsed == 0L) return;
+            if (android.os.SystemClock.elapsedRealtime() > lockdownSearchDeadlineElapsed) {
+                lockdownSearchDeadlineElapsed = 0L;
+                Toast.makeText(LockAccessibilityService.this,
+                        "Lockdown wasn't detected. Enable 'Show lockdown option' in your lock-screen settings and try again.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (clickLockdownOptionInSystemUi()) {
+                lockdownSearchDeadlineElapsed = 0L;
+                Toast.makeText(LockAccessibilityService.this, "Lockdown selected.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            handler.postDelayed(this, 180L);
+        }
+    };
 
     private int sizeDp;
     private int sizePx;
@@ -232,17 +257,66 @@ public final class LockAccessibilityService extends AccessibilityService impleme
 
     private void openHardLockMenu() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            // Android does not let ordinary apps silently disable biometrics.
-            // Open the system power menu so the user can choose Lockdown, if enabled.
             boolean opened = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
             if (opened) {
-                Toast.makeText(this, "Choose Lockdown in the power menu to require PIN, pattern, or password. If Lockdown is not shown, enable it in your phone security settings.", Toast.LENGTH_LONG).show();
+                // Select the real Lockdown item only if Android exposes it as an accessible node.
+                // Never click arbitrary screen coordinates.
+                handler.removeCallbacks(scanForLockdown);
+                lockdownSearchDeadlineElapsed = android.os.SystemClock.elapsedRealtime() + 4000L;
+                handler.postDelayed(scanForLockdown, 250L);
             } else {
-                Toast.makeText(this, "Could not open the power menu. Use your phone's power menu and choose Lockdown.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Could not open the power menu.", Toast.LENGTH_LONG).show();
             }
         } else {
-            Toast.makeText(this, "Hard Lock requires Android 9 or newer. Use the power menu Lockdown option if available.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Hard Lock requires Android 9 or newer.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private boolean clickLockdownOptionInSystemUi() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                List<AccessibilityWindowInfo> windows = getWindows();
+                if (windows != null) {
+                    for (AccessibilityWindowInfo window : windows) {
+                        AccessibilityNodeInfo root = window.getRoot();
+                        if (root != null && findAndClickLockdownNode(root)) return true;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // Some OEM system windows do not expose an accessibility tree.
+            }
+        }
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        return root != null && findAndClickLockdownNode(root);
+    }
+
+    private boolean findAndClickLockdownNode(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        if (isLockdownLabel(node)) {
+            AccessibilityNodeInfo current = node;
+            for (int depth = 0; current != null && depth < 5; depth++) {
+                if (current.isEnabled() && current.isClickable()
+                        && current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+                current = current.getParent();
+            }
+            if (node.isEnabled() && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null && findAndClickLockdownNode(child)) return true;
+        }
+        return false;
+    }
+
+    private boolean isLockdownLabel(AccessibilityNodeInfo node) {
+        return containsLockdown(node.getText()) || containsLockdown(node.getContentDescription());
+    }
+
+    private boolean containsLockdown(CharSequence label) {
+        if (label == null) return false;
+        String value = label.toString().toLowerCase(java.util.Locale.ROOT);
+        return value.contains("lockdown") || value.contains("lock down")
+                || value.contains("लॉकडाउन") || value.contains("लॉक डाउन");
     }
 
     private void lockScreenNow() {
@@ -496,7 +570,11 @@ public final class LockAccessibilityService extends AccessibilityService impleme
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // No window text or content is needed for this workflow.
+        // Re-check promptly when Android reports a window transition during the short scan window.
+        if (lockdownSearchDeadlineElapsed != 0L) {
+            handler.removeCallbacks(scanForLockdown);
+            handler.postDelayed(scanForLockdown, 80L);
+        }
     }
 
     @Override
@@ -508,6 +586,8 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     public void onDestroy() {
         handler.removeCallbacks(longPressAction);
         handler.removeCallbacks(pendingSingleTap);
+        handler.removeCallbacks(scanForLockdown);
+        lockdownSearchDeadlineElapsed = 0L;
         if (preferences != null) preferences.unregisterOnSharedPreferenceChangeListener(this);
         dismissControls();
         if (windowManager != null && overlayRoot != null) {
