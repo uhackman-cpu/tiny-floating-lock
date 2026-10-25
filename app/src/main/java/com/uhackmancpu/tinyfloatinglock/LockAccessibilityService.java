@@ -2,6 +2,7 @@ package com.uhackmancpu.tinyfloatinglock;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Context;
+import android.media.AudioManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
@@ -43,6 +44,13 @@ public final class LockAccessibilityService extends AccessibilityService impleme
     private View controlsPanel;
     private WindowManager.LayoutParams controlsParams;
     private SharedPreferences preferences;
+    private AudioManager audioManager;
+    private boolean volumeDragEnabled = true;
+    private boolean secondTapCandidate;
+    private boolean volumeGestureActive;
+    private boolean volumeGestureResolved;
+    private float volumeGestureStartY;
+    private int volumeGestureStartLevel;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long lockdownSearchDeadlineElapsed;
 
@@ -97,6 +105,8 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         preferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         preferences.registerOnSharedPreferenceChangeListener(this);
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        volumeDragEnabled = preferences.getBoolean("volume_drag_enabled", true);
         touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
         sizePx = clamp(preferences.getInt("size_px", DEFAULT_SIZE_PX), MIN_SIZE_PX, MAX_SIZE_PX);
         sizeDp = pxToDp(sizePx);
@@ -161,22 +171,45 @@ public final class LockAccessibilityService extends AccessibilityService impleme
                 didMove = false;
                 longPressTriggered = false;
                 pinching = false;
+                volumeGestureActive = false;
+                volumeGestureResolved = false;
+
+                long downTime = android.os.SystemClock.elapsedRealtime();
+                if (lastTapTime > 0 && downTime - lastTapTime > DOUBLE_TAP_MS) {
+                    lastTapTime = 0L;
+                }
+                secondTapCandidate = lastTapTime > 0
+                        && downTime - lastTapTime <= DOUBLE_TAP_MS;
                 handler.removeCallbacks(longPressAction);
-                handler.postDelayed(longPressAction, LONG_PRESS_MS);
+                if (secondTapCandidate) {
+                    // The second tap is reserved for either opening Power Menu or vertical volume drag.
+                    handler.removeCallbacks(pendingSingleTap);
+                } else {
+                    handler.postDelayed(longPressAction, LONG_PRESS_MS);
+                }
+                volumeGestureStartY = event.getRawY();
+                volumeGestureStartLevel = getMediaVolume();
                 return true;
+
             case MotionEvent.ACTION_POINTER_DOWN:
                 if (event.getPointerCount() >= 2) {
                     handler.removeCallbacks(longPressAction);
+                    secondTapCandidate = false;
+                    lastTapTime = 0L;
+                    volumeGestureActive = false;
                     pinching = true;
                     didMove = true;
                     pinchStartDistance = distanceBetweenFirstTwoPointers(event);
                     pinchStartSizePx = sizePx;
                 }
                 return true;
+
             case MotionEvent.ACTION_MOVE:
                 if (event.getPointerCount() >= 2) {
                     if (!pinching) {
                         handler.removeCallbacks(longPressAction);
+                        secondTapCandidate = false;
+                        volumeGestureActive = false;
                         pinching = true;
                         didMove = true;
                         pinchStartDistance = distanceBetweenFirstTwoPointers(event);
@@ -186,9 +219,30 @@ public final class LockAccessibilityService extends AccessibilityService impleme
                     updateSizePx(pinchStartSizePx + delta);
                     return true;
                 }
+
                 if (!pinching) {
                     float dx = event.getRawX() - downRawX;
                     float dy = event.getRawY() - downRawY;
+
+                    if (secondTapCandidate && volumeDragEnabled && !volumeGestureResolved
+                            && !volumeGestureActive
+                            && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
+                        if (Math.abs(dy) > Math.abs(dx) * 1.15f) {
+                            volumeGestureActive = true;
+                            didMove = true;
+                            lastTapTime = 0L;
+                            handler.removeCallbacks(longPressAction);
+                        } else {
+                            // Horizontal or diagonal movement keeps its normal button-drag behavior.
+                            volumeGestureResolved = true;
+                        }
+                    }
+
+                    if (volumeGestureActive) {
+                        adjustMediaVolumeForDrag(dy);
+                        return true;
+                    }
+
                     if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
                         didMove = true;
                         handler.removeCallbacks(longPressAction);
@@ -201,32 +255,56 @@ public final class LockAccessibilityService extends AccessibilityService impleme
                     }
                 }
                 return true;
+
             case MotionEvent.ACTION_POINTER_UP:
                 return true;
+
             case MotionEvent.ACTION_UP:
                 handler.removeCallbacks(longPressAction);
-                if (!didMove && !longPressTriggered && !pinching) {
-                    long now = android.os.SystemClock.elapsedRealtime();
-                    if (lastTapTime > 0 && now - lastTapTime <= DOUBLE_TAP_MS) {
+                if (volumeGestureActive) {
+                    // Volume changed; do not move/save the floating button or open Power Menu.
+                    lastTapTime = 0L;
+                } else if (!didMove && !longPressTriggered && !pinching) {
+                    if (secondTapCandidate) {
                         handler.removeCallbacks(pendingSingleTap);
-                        lastTapTime = 0;
+                        lastTapTime = 0L;
                         openHardLockMenu();
                     } else {
-                        lastTapTime = now;
-                        handler.postDelayed(pendingSingleTap, DOUBLE_TAP_MS);
+                        long now = android.os.SystemClock.elapsedRealtime();
+                        if (lastTapTime > 0 && now - lastTapTime <= DOUBLE_TAP_MS) {
+                            handler.removeCallbacks(pendingSingleTap);
+                            lastTapTime = 0L;
+                            openHardLockMenu();
+                        } else {
+                            lastTapTime = now;
+                            handler.postDelayed(pendingSingleTap, DOUBLE_TAP_MS);
+                        }
                     }
                 } else {
+                    lastTapTime = 0L;
                     savePosition();
                     saveSize();
                 }
+                secondTapCandidate = false;
+                volumeGestureActive = false;
+                volumeGestureResolved = false;
                 pinching = false;
                 return true;
+
             case MotionEvent.ACTION_CANCEL:
                 handler.removeCallbacks(longPressAction);
+                if (secondTapCandidate) handler.removeCallbacks(pendingSingleTap);
+                if (!volumeGestureActive) {
+                    savePosition();
+                    saveSize();
+                }
+                lastTapTime = 0L;
+                secondTapCandidate = false;
+                volumeGestureActive = false;
+                volumeGestureResolved = false;
                 pinching = false;
-                savePosition();
-                saveSize();
                 return true;
+
             default:
                 return true;
         }
@@ -330,6 +408,49 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         }
     }
 
+    private int getMediaVolumeMax() {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        }
+        return audioManager == null
+                ? 15
+                : Math.max(1, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+    }
+
+    private int getMediaVolume() {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        }
+        return audioManager == null ? 0 : audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+    }
+
+    private void setMediaVolume(int requestedLevel) {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        }
+        if (audioManager == null) return;
+        int max = getMediaVolumeMax();
+        try {
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, clamp(requestedLevel, 0, max), 0);
+        } catch (RuntimeException ignored) {
+            // A device policy or OEM audio implementation may reject volume changes.
+        }
+    }
+
+    private String mediaVolumeLabel() {
+        int max = getMediaVolumeMax();
+        int current = clamp(getMediaVolume(), 0, max);
+        int percent = Math.round(current * 100f / max);
+        return "Media volume: " + percent + "% (" + current + "/" + max + ")";
+    }
+
+    private void adjustMediaVolumeForDrag(float deltaY) {
+        int max = getMediaVolumeMax();
+        int stepPixels = Math.max(dp(24), touchSlop * 2);
+        int levelDelta = Math.round(-deltaY / (float) stepPixels);
+        setMediaVolume(clamp(volumeGestureStartLevel + levelDelta, 0, max));
+    }
+
     private void updateSizePx(int requestedPx) {
         sizePx = clamp(requestedPx, MIN_SIZE_PX, MAX_SIZE_PX);
         sizeDp = pxToDp(sizePx);
@@ -405,6 +526,23 @@ public final class LockAccessibilityService extends AccessibilityService impleme
             }
         });
 
+        TextView volumeLabel = textLabel(mediaVolumeLabel(), 14, 0xFF243447, true);
+        panel.addView(volumeLabel, topMargin(matchWrap(), 10));
+        SeekBar volumeSeek = new SeekBar(this);
+        int volumeMax = getMediaVolumeMax();
+        volumeSeek.setMax(volumeMax);
+        volumeSeek.setProgress(clamp(getMediaVolume(), 0, volumeMax));
+        panel.addView(volumeSeek, matchWrap());
+        volumeSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) setMediaVolume(progress);
+                volumeLabel.setText(mediaVolumeLabel());
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) { }
+            @Override public void onStopTrackingTouch(SeekBar seekBar) { }
+        });
+
         TextView done = textLabel("Done", 15, Color.WHITE, true);
         done.setGravity(Gravity.CENTER);
         done.setPadding(dp(12), dp(10), dp(12), dp(10));
@@ -425,7 +563,7 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         controlsParams.gravity = Gravity.TOP | Gravity.START;
         controlsParams.setTitle("Tiny Floating Lock appearance controls");
         Point screen = screenSize();
-        int estimatedHeight = dp(240);
+        int estimatedHeight = dp(350);
         int candidateY = overlayParams.y >= estimatedHeight + dp(8)
                 ? overlayParams.y - estimatedHeight - dp(8)
                 : overlayParams.y + sizePx + dp(8);
@@ -557,6 +695,9 @@ public final class LockAccessibilityService extends AccessibilityService impleme
         if ("opacity".equals(key)) {
             opacityPercent = clamp(prefs.getInt("opacity", DEFAULT_OPACITY), 10, 100);
             updateButtonVisuals();
+        }
+        if ("volume_drag_enabled".equals(key)) {
+            volumeDragEnabled = prefs.getBoolean("volume_drag_enabled", true);
         }
         if ("x".equals(key) || "y".equals(key)) {
             if (overlayParams != null) {
