@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Tiny Floating Lock</string>
     <string name="accessibility_service_label">Tiny Floating Lock</string>
-    <string name="accessibility_service_description">Shows a movable lock button and locks the screen on single tap. After a double tap, it briefly checks the Android power menu for the Lockdown item and selects it when the system exposes that item to Accessibility.</string>
+    <string name="accessibility_service_description">Shows a movable lock button. Single tap locks the screen, double tap opens Android Power Menu, and holding opens quick controls for media volume, button size, and opacity. When enabled in app settings, double-tap and vertical drag adjusts media volume.</string>
 </resources>
