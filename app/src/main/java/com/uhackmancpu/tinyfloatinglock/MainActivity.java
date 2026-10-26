@@ -34,10 +34,31 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(Color.rgb(9, 15, 25));
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(22), dp(28), dp(22), dp(28));
+        page.setPadding(dp(22), dp(16), dp(22), dp(28));
         scroll.addView(page);
+
+        // Target SDK 36 draws edge-to-edge. Apply system-bar and cutout insets to the
+        // scroll container so content never sits underneath the status or navigation bars.
+        final int baseLeft = scroll.getPaddingLeft();
+        final int baseTop = scroll.getPaddingTop();
+        final int baseRight = scroll.getPaddingRight();
+        final int baseBottom = scroll.getPaddingBottom();
+        scroll.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars()
+                            | android.view.WindowInsets.Type.displayCutout());
+            view.setPadding(
+                    baseLeft + bars.left,
+                    baseTop + bars.top,
+                    baseRight + bars.right,
+                    baseBottom + bars.bottom);
+            return insets;
+        });
+        scroll.setFocusableInTouchMode(true);
         page.addView(label("Tiny Floating Lock", 27, Color.WHITE, true));
         page.addView(label("Appearance settings", 15, 0xFF9DB0C5, false), top(6));
 
