@@ -52,7 +52,7 @@ The current version describes local preference storage and Accessibility Service
 - Feature graphic SVG source: `store-assets/feature-graphic.svg` (1024×500).
 - Screenshot archive: [10 recreated HD promotional images](https://github.com/uhackman-cpu/tiny-floating-lock/blob/main/Tiny_Floating_Lock_10_HD_Recreated_Images.zip), stored on `main`.
 - The archive was checked: all 10 files are RGB PNGs at 1080×1920, approximately 1.5–2.1 MB each. They are **recreated mockups, not raw physical-device captures**. Verify them against the exact release build before submitting; in particular, capture or verify the real Accessibility Settings flow shown in image 09.
-- The existing **Prepare Play Store Assets and Screenshots** workflow renders the 512×512 icon and 1024×500 feature graphic into upload-ready PNG artifacts.
+- The **Prepare Play Store Upload Pack** workflow renders the icon/feature graphic into upload-ready PNGs and packages all 10 supplied images plus listing docs into one downloadable artifact. The separate **Prepare Play Store Assets and Screenshots** workflow captures emulator UI screenshots for later real-behavior review.
 
 ## Technical notes
 
