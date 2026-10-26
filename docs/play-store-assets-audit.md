@@ -48,3 +48,15 @@ Official sources:
 - [Add preview assets to showcase your app](https://support.google.com/googleplay/android-developer/answer/9866151?hl=en)
 - [Metadata policy](https://support.google.com/googleplay/android-developer/answer/9898842?hl=en)
 - [Data safety guidance](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en)
+
+
+## Rendered upload-pack validation
+
+Generated and checked successfully by workflow [run #40358745695](https://github.com/uhackman-cpu/tiny-floating-lock/actions/runs/40358745695):
+
+- `app-icon-512x512.png`: 512×512, sRGBA (32-bit with alpha), 52,993 bytes — below the 1 MB limit.
+- `feature-graphic-1024x500.png`: 1024×500, sRGB (24-bit without alpha), 93,558 bytes.
+- All ten included screenshots remain 1080×1920, sRGB (no alpha).
+- Combined artifact: `tiny-floating-lock-play-store-upload-pack` (about 18.3 MB), containing the two rendered graphics, all ten screenshots and the listing/checklist/audit documents.
+
+[Download the prepared pack from this chat](sandbox:/mnt/data/Tiny-Floating-Lock-Play-Store-Upload-Pack.zip). Review the included `READ-BEFORE-UPLOAD.txt` before submitting assets.
