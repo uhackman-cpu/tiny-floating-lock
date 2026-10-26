@@ -1,0 +1,94 @@
+name: Prepare Play Store Upload Pack
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Render graphics and package supplied screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out project branch
+        uses: actions/checkout@v4
+
+      - name: Check out screenshot archive from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: screenshot-source
+
+      - name: Install asset tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin imagemagick unzip
+
+      - name: Render upload-sized graphics and validate supplied screenshots
+        run: |
+          set -euo pipefail
+          PACK="play-store-upload-pack"
+          mkdir -p "$PACK/screenshots" "$PACK/docs"
+
+          rsvg-convert --width 512 --height 512 --format png \
+            --output /tmp/app-icon.png store-assets/app-icon.svg
+          convert /tmp/app-icon.png -resize 512x512! -depth 8 \
+            "PNG32:$PACK/app-icon-512x512.png"
+
+          rsvg-convert --width 1024 --height 500 --format png \
+            --output /tmp/feature-graphic.png store-assets/feature-graphic.svg
+          convert /tmp/feature-graphic.png -background '#071522' -alpha remove -alpha off \
+            -resize 1024x500! -depth 8 "PNG24:$PACK/feature-graphic-1024x500.png"
+
+          unzip -q screenshot-source/Tiny_Floating_Lock_10_HD_Recreated_Images.zip \
+            -d "$PACK/screenshots"
+
+          COUNT="$(find "$PACK/screenshots" -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')"
+          test "$COUNT" = "10"
+
+          identify -format '%f | %wx%h | %[channels] | %b\n' "$PACK/screenshots"/*.png \
+            | tee "$PACK/docs/screenshot-inventory.txt"
+          while IFS= read -r line; do
+            case "$line" in
+              *"1080x1920"*) ;;
+              *) echo "Unexpected screenshot dimensions: $line"; exit 1 ;;
+            esac
+          done < "$PACK/docs/screenshot-inventory.txt"
+
+          identify -format '%f | %wx%h | %[channels] | %b\n' \
+            "$PACK/app-icon-512x512.png" "$PACK/feature-graphic-1024x500.png" \
+            | tee "$PACK/docs/graphic-inventory.txt"
+          test "$(identify -format '%wx%h' "$PACK/app-icon-512x512.png")" = "512x512"
+          test "$(identify -format '%wx%h' "$PACK/feature-graphic-1024x500.png")" = "1024x500"
+          test "$(identify -format '%[channels]' "$PACK/feature-graphic-1024x500.png")" = "srgb"
+
+          cp docs/play-store-listing.md "$PACK/docs/"
+          cp docs/play-store-checklist.md "$PACK/docs/"
+          cp docs/play-store-assets-audit.md "$PACK/docs/"
+          cat > "$PACK/READ-BEFORE-UPLOAD.txt" <<'EOF'
+          Tiny Floating Lock — Play Store upload pack
+
+          This pack contains a 512x512 app icon PNG, a 1024x500 feature graphic PNG,
+          the 10 supplied 1080x1920 screenshots, listing copy, checklist and asset audit.
+
+          IMPORTANT: the 10 supplied screenshots are recreated promotional mockups,
+          not direct captures from a physical device. Check every depiction against
+          the exact signed release AAB before submission. Replace or verify the
+          Accessibility Settings mockup with a real device capture. Use only assets
+          that accurately represent the released app.
+
+          The AAB is not included. Do not upload the unsigned AAB. Sign the release
+          bundle with the app's separate upload key, verify its signature and test
+          the signed build before submitting. Current build has no ads; update
+          disclosures if that changes before release.
+          EOF
+
+      - name: Upload Play Store upload pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-floating-lock-play-store-upload-pack
+          path: play-store-upload-pack/
+          if-no-files-found: error
+          retention-days: 30
