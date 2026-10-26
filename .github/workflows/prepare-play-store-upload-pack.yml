@@ -1,6 +1,15 @@
 name: Prepare Play Store Upload Pack
 
 on:
+  push:
+    branches:
+      - feature/in-app-appearance-controls
+    paths:
+      - '.github/workflows/prepare-play-store-upload-pack.yml'
+      - 'store-assets/**'
+      - 'docs/play-store-listing.md'
+      - 'docs/play-store-checklist.md'
+      - 'docs/play-store-assets-audit.md'
   workflow_dispatch:
 
 permissions:
