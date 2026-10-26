@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Tiny Floating Lock</string>
     <string name="accessibility_service_label">Tiny Floating Lock floating lock button</string>
-    <string name="accessibility_service_description">Shows and operates a floating lock button. A single tap locks the screen, a double tap opens Android Power Menu, and a hold shows quick controls for media volume, button size, and opacity. The service does not inspect other apps' screen content.</string>
+    <string name="accessibility_service_description">Shows and operates a floating lock button. A single tap locks the screen, a double tap opens Android Power Menu, and a hold shows quick controls for media volume, button size, and opacity. The service does not inspect screen content from other apps.</string>
 </resources>
