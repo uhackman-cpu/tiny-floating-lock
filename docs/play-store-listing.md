@@ -19,7 +19,7 @@ FEATURES
 • Choose the appearance settings that work best for your device.
 
 ACCESSIBILITY SERVICE
-Tiny Floating Lock uses Android's Accessibility Service to provide its core screen-lock action and floating controls. You must enable the service in Android Settings for the floating button to work. A brief local check of Android system UI labels may occur after opening the power menu to look for the Lockdown option. The app does not intentionally send screen content or accessibility labels to the developer or third parties. Review the privacy policy before enabling the service.
+Tiny Floating Lock uses Android's Accessibility Service to carry out actions you trigger on the floating button: lock the screen, open Android's Power Menu, and show quick controls. The app displays an in-app disclosure and asks for your affirmative consent before opening Accessibility Settings. You must then enable the service manually. The service is configured not to retrieve other apps' window content and does not inspect or transmit screen text, messages, passwords, or other apps' content. You can disable the service at any time in Android Settings.
 
 PRIVACY
 The current version has no ads, analytics, account system, or app network requests. Preferences such as button position, size, opacity, and gesture settings stay on your device.
@@ -41,6 +41,6 @@ Support: davidgamer7374@gmail.com
 ## Data safety / accessibility declaration notes (review against the actual release build)
 - Current implementation has no Android INTERNET permission and no advertising or analytics SDKs.
 - Review Play Console's current Data safety questionnaire before declaring "no data collected"; answer it for the exact AAB being submitted.
-- Explain that Accessibility Service is core app functionality: screen locking, floating controls, and the local power-menu Lockdown label check.
-- Declare the Accessibility API usage accurately in Play Console and provide any requested in-app prominent disclosure/consent.
+- Explain that Accessibility Service is core app functionality: user-triggered screen locking, Power Menu opening, and floating controls. The current build does not retrieve other apps' window content.
+- Declare Accessibility API usage accurately in Play Console. The app now includes a separate in-app prominent disclosure and affirmative consent flow; provide the required review video and complete any Play Console declaration.
 - Do not claim that Google has approved the app or that Accessibility API use guarantees approval.
