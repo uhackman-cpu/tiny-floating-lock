@@ -30,9 +30,10 @@ You can disable the Accessibility service at any time in Android Accessibility s
 
 - Android APK build workflow has completed successfully on the `feature/in-app-appearance-controls` branch.
 - A Play Store Android App Bundle (AAB) build has also completed successfully, but that workflow artifact is **unsigned** and must be signed with this app's separate upload key before Play Console upload.
+- Application ID: `com.dev.tinyfloatinglock`. Java namespace: `com.uhackmancpu.tinyfloatinglock`.
 - GitHub Actions: [view workflow runs](https://github.com/uhackman-cpu/tiny-floating-lock/actions).
-- This project has **not yet been published on Google Play**. A Google Play Console account has not been created yet.
-- AdMob is not included. Advertising may be considered later; if added, the app, privacy policy and Play disclosures must be updated before release.
+- This project has **not yet been published on Google Play**. A Google Play Console developer account has not been created yet.
+- AdMob is not included. Advertising may be considered later; if added, the app, privacy policy and Play disclosures must be updated before that version is released.
 
 ## Privacy policy
 
@@ -42,9 +43,20 @@ The current-version privacy policy is published at:
 
 The current version describes local preference storage and Accessibility Service use. It states that the app does not include ads or analytics SDKs, does not request Internet permission, and does not send personal information to the developer or third parties.
 
+## Play Store preparation
+
+- Listing copy: [`docs/play-store-listing.md`](docs/play-store-listing.md)
+- Release checklist: [`docs/play-store-checklist.md`](docs/play-store-checklist.md)
+- Screenshot audit: [`docs/play-store-assets-audit.md`](docs/play-store-assets-audit.md)
+- App icon SVG source: `store-assets/app-icon.svg` (512×512).
+- Feature graphic SVG source: `store-assets/feature-graphic.svg` (1024×500).
+- Screenshot archive: [10 recreated HD promotional images](https://github.com/uhackman-cpu/tiny-floating-lock/blob/main/Tiny_Floating_Lock_10_HD_Recreated_Images.zip), stored on `main`.
+- The archive was checked: all 10 files are RGB PNGs at 1080×1920, approximately 1.5–2.1 MB each. They are **recreated mockups, not raw physical-device captures**. Verify them against the exact release build before submitting; in particular, capture or verify the real Accessibility Settings flow shown in image 09.
+- The existing **Prepare Play Store Assets and Screenshots** workflow renders the 512×512 icon and 1024×500 feature graphic into upload-ready PNG artifacts.
+
 ## Technical notes
 
-- Minimum Android version: Android 9 (API 28).
+- Minimum Android version: Android 9 (API 28); target API is 36.
 - Uses Android's native accessibility global actions, not legacy Device Admin.
 - The service is configured with `canRetrieveWindowContent=false`; it does not inspect screen text, passwords, messages or other apps' window contents.
 - The app stores preferences such as button position, size, opacity and volume-gesture setting locally on the device.
@@ -56,10 +68,11 @@ The current version describes local preference storage and Accessibility Service
 - [x] Publish the privacy policy over HTTPS.
 - [x] Successfully build the Android APK.
 - [x] Successfully build an unsigned Play Store AAB.
+- [x] Audit the supplied screenshot archive: 10 PNGs, 1080×1920, RGB.
 - [ ] Create a Google Play Console developer account.
 - [ ] Create and securely store a separate signing/upload key for Tiny Floating Lock.
 - [ ] Sign the AAB and verify the signed artifact.
-- [ ] Finalize store listing, screenshots, feature graphic and app icon.
+- [ ] Render and review the app icon and feature graphic; confirm dimensions, color mode and size.
+- [ ] Verify/re-capture promotional mockups against the signed release, particularly the Accessibility Settings image.
 - [ ] Complete Play Console App content, Accessibility declaration, Data Safety and other required forms based on the actual release build.
 - [ ] Upload and complete any testing requirements shown by Play Console for the developer account.
-
