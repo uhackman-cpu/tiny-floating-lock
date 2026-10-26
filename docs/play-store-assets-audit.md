@@ -59,4 +59,4 @@ Generated and checked successfully by workflow [run #40358745695](https://github
 - All ten included screenshots remain 1080×1920, sRGB (no alpha).
 - Combined artifact: `tiny-floating-lock-play-store-upload-pack` (about 18.3 MB), containing the two rendered graphics, all ten screenshots and the listing/checklist/audit documents.
 
-[Download the prepared pack from this chat](sandbox:/mnt/data/Tiny-Floating-Lock-Play-Store-Upload-Pack.zip). Review the included `READ-BEFORE-UPLOAD.txt` before submitting assets.
+Review the included `READ-BEFORE-UPLOAD.txt` before submitting assets.
