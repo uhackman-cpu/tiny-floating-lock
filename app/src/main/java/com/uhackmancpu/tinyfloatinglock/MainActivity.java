@@ -1,6 +1,7 @@
 package com.uhackmancpu.tinyfloatinglock;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -105,13 +106,90 @@ public final class MainActivity extends Activity {
 
         TextView accessibility = button("Enable / manage floating lock");
         page.addView(accessibility, top(28));
-        accessibility.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        accessibility.setOnClickListener(v -> showAccessibilityDisclosure());
 
         TextView note = label("Single tap: lock screen. Double tap: open Android Power Menu. Hold: open quick controls with media-volume, size and opacity sliders. Drag the lock to move it; use a two-finger pinch to resize it.", 14, 0xFFB8C7D8, false);
         note.setLineSpacing(dp(4), 1f);
         page.addView(note, top(18));
+
+        TextView privacyPolicy = label("Read privacy policy", 14, 0xFF00D7E5, true);
+        privacyPolicy.setPadding(0, dp(12), 0, dp(8));
+        privacyPolicy.setClickable(true);
+        privacyPolicy.setFocusable(true);
+        privacyPolicy.setOnClickListener(v -> showPrivacyPolicy());
+        page.addView(privacyPolicy, top(10));
+
         setContentView(scroll);
         updatePreview(size, opacity);
+        page.post(() -> {
+            if (!prefs.getBoolean("accessibility_disclosure_accepted", false)) {
+                showAccessibilityDisclosure();
+            }
+        });
+    }
+
+
+    private void showAccessibilityDisclosure() {
+        boolean previouslyAccepted = prefs.getBoolean("accessibility_disclosure_accepted", false);
+        String message =
+                "Tiny Floating Lock uses Android Accessibility Service to make the floating lock button work over other apps. " +
+                "When you tap the button, the service can lock your screen; when you double-tap it, the service opens Android's Power Menu; " +
+                "when you hold it, the service displays the app's quick controls. " +
+                "The service also displays and handles the floating button itself.\n\n" +
+                "The service does not inspect or read screen contents, messages, passwords, typed text, or content from other apps. " +
+                "It does not record your screen or send information to the developer or third parties. " +
+                "The app saves only button preferences (position, size, opacity, and the volume-gesture toggle) locally on this device.\n\n" +
+                "You must enable the service yourself in Android Settings after continuing. You can turn it off at any time in Android Accessibility settings. " +
+                "Please continue only if you understand and agree to this use.";
+        new AlertDialog.Builder(this)
+                .setTitle("Accessibility permission disclosure")
+                .setMessage(message)
+                .setPositiveButton(previouslyAccepted ? "Open Accessibility settings" : "Agree & continue", (dialog, which) -> {
+                    if (!previouslyAccepted) {
+                        prefs.edit().putBoolean("accessibility_disclosure_accepted", true).apply();
+                    }
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                })
+                .setNegativeButton("Not now", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void showPrivacyPolicy() {
+        String policy =
+                "Tiny Floating Lock — Privacy Policy\n" +
+                "Last updated: October 26, 2026\n\n" +
+                "Developer: Dev Kashyap\n" +
+                "Privacy contact: davidgamer7374@gmail.com\n\n" +
+                "1. Information collection and sharing\n" +
+                "The current version does not include advertising or analytics SDKs, accounts, or network requests, and it does not request the Internet permission. " +
+                "It does not collect or transmit personal information. No data is sold or shared with third parties.\n\n" +
+                "2. Accessibility Service\n" +
+                "The service is used to show and operate the floating lock button, run the user-requested screen-lock action, open Android's Power Menu, and show quick controls. " +
+                "It is configured not to retrieve other apps' window content. It does not inspect screen text, messages, passwords, typed text, or other apps' content, and does not record your screen. " +
+                "You can disable the service any time from Android Accessibility settings.\n\n" +
+                "3. Information stored on your device\n" +
+                "The app stores button position, size, opacity, and the volume-gesture preference locally in app storage. These preferences are not sent off-device. " +
+                "They remain on the device until you clear the app's storage or uninstall the app.\n\n" +
+                "4. Permissions and user control\n" +
+                "Accessibility access is optional and must be enabled by you in Android Settings. If you do not enable it, the floating button feature will not operate. " +
+                "You can disable it at any time.\n\n" +
+                "5. Children\n" +
+                "This general-purpose utility is not designed to collect children's personal information, and the current version does not collect or transmit personal information.\n\n" +
+                "6. Changes\n" +
+                "This policy will be updated if the app's features or data practices change. Do not release a version with new data practices until the policy and Play Console disclosures are updated.\n\n" +
+                "Contact\n" +
+                "For privacy questions, email davidgamer7374@gmail.com.";
+        ScrollView policyScroll = new ScrollView(this);
+        policyScroll.setFillViewport(true);
+        TextView policyText = label(policy, 14, 0xFF152334, false);
+        policyText.setPadding(dp(18), dp(12), dp(18), dp(12));
+        policyText.setLineSpacing(dp(3), 1f);
+        policyScroll.addView(policyText, new ScrollView.LayoutParams(-1, -2));
+        new AlertDialog.Builder(this)
+                .setTitle("Privacy policy")
+                .setView(policyScroll)
+                .setPositiveButton("Close", null)
+                .show();
     }
 
     private void updatePreview(int size, int opacity) {
