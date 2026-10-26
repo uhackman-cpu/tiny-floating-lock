@@ -35,7 +35,7 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(Color.rgb(9, 15, 25));
         scroll.setFillViewport(true);
-        scroll.setClipToPadding(false);
+        scroll.setClipToPadding(true);
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(22), dp(16), dp(22), dp(28));
@@ -51,11 +51,14 @@ public final class MainActivity extends Activity {
             android.graphics.Insets bars = insets.getInsets(
                     android.view.WindowInsets.Type.systemBars()
                             | android.view.WindowInsets.Type.displayCutout());
+            // Keep content inside the safe viewport. Clipping to padding prevents the
+            // first/last rows from being drawn beneath status/navigation bars while scrolling.
             view.setPadding(
                     baseLeft + bars.left,
                     baseTop + bars.top,
                     baseRight + bars.right,
                     baseBottom + bars.bottom);
+            view.setClipToPadding(true);
             return insets;
         });
         scroll.setFocusableInTouchMode(true);
