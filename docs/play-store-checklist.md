@@ -28,8 +28,9 @@
 ### App icon and feature graphic
 - Editable app icon source: `store-assets/app-icon.svg` (512×512 SVG).
 - Editable feature graphic source: `store-assets/feature-graphic.svg` (1024×500 SVG).
-- Workflow: `.github/workflows/capture-play-store-screenshots.yml`, manually run as **Prepare Play Store Assets and Screenshots**.
-- It renders a 512×512 PNG icon and a 1024×500 PNG feature graphic, then uploads workflow artifacts. Before upload, ensure the icon is 32-bit PNG with alpha and at most 1 MB; the feature graphic must be JPEG or 24-bit PNG without alpha.
+- Main upload-pack workflow: `.github/workflows/prepare-play-store-upload-pack.yml`, manually run as **Prepare Play Store Upload Pack**. It checks out the supplied archive from `main`, renders the 512×512 icon and 1024×500 feature graphic, validates the ten screenshot dimensions, and uploads a combined artifact with the assets and listing docs.
+- Optional real-device-style emulator workflow: `.github/workflows/capture-play-store-screenshots.yml`, manually run as **Prepare Play Store Assets and Screenshots**. It captures a smaller set of app UI screenshots from an emulator; these must also be reviewed before submission.
+- Before upload, ensure the icon is 32-bit PNG with alpha and at most 1 MB; the feature graphic must be JPEG or 24-bit PNG without alpha.
 
 ## Remaining steps before production release
 1. Create the Google Play Console developer account and complete Google's identity/contact verification. Pay the registration fee directly to Google; never share login credentials or OTPs.
