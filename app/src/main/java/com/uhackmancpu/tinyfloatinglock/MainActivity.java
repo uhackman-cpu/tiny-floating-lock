@@ -58,7 +58,6 @@ public final class MainActivity extends Activity {
                     baseTop + bars.top,
                     baseRight + bars.right,
                     baseBottom + bars.bottom);
-            view.setClipToPadding(true);
             return insets;
         });
         scroll.setFocusableInTouchMode(true);
