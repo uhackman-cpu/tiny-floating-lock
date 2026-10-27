@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071522"/>
+      <stop offset=".62" stop-color="#102D40"/>
+      <stop offset="1" stop-color="#087F8C"/>
+    </linearGradient>
+    <linearGradient id="button" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20D7C2"/>
+      <stop offset="1" stop-color="#087F8C"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <circle cx="245" cy="248" r="188" fill="#20D7C2" fill-opacity=".08"/>
+  <circle cx="245" cy="248" r="155" fill="#FFFFFF" fill-opacity=".05" stroke="#8CEDE3" stroke-opacity=".18" stroke-width="2"/>
+  <circle cx="245" cy="248" r="118" fill="url(#button)" filter="url(#shadow)"/>
+  <path d="M204 236v-23c0-24 18-44 41-44s41 20 41 44v23" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+  <rect x="187" y="229" width="116" height="91" rx="17" fill="#FFFFFF"/>
+  <circle cx="245" cy="265" r="10" fill="#087F8C"/>
+  <path d="M239 273h12l-4 22h-4z" fill="#087F8C"/>
+  <circle cx="401" cy="121" r="5" fill="#B8FFF5" fill-opacity=".8"/>
+  <circle cx="421" cy="144" r="3" fill="#B8FFF5" fill-opacity=".6"/>
+  <path d="M390 365h55" stroke="#B8FFF5" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+  <path d="M418 338v55" stroke="#B8FFF5" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+  <text x="474" y="164" fill="#B8FFF5" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="4">SMART FLOATING UTILITY</text>
+  <text x="470" y="229" fill="#FFFFFF" font-family="DejaVu Sans,Arial,sans-serif" font-size="48" font-weight="700">Tiny Floating</text>
+  <text x="470" y="286" fill="#FFFFFF" font-family="DejaVu Sans,Arial,sans-serif" font-size="48" font-weight="700">Lock</text>
+  <text x="472" y="337" fill="#D6E8F2" font-family="DejaVu Sans,Arial,sans-serif" font-size="22">Lock your screen. Keep controls close.</text>
+  <g transform="translate(472 380)">
+    <rect width="143" height="43" rx="21.5" fill="#FFFFFF" fill-opacity=".10" stroke="#8CEDE3" stroke-opacity=".55"/>
+    <text x="71.5" y="27" text-anchor="middle" fill="#FFFFFF" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700">MOVE</text>
+    <rect x="157" width="143" height="43" rx="21.5" fill="#FFFFFF" fill-opacity=".10" stroke="#8CEDE3" stroke-opacity=".55"/>
+    <text x="228.5" y="27" text-anchor="middle" fill="#FFFFFF" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700">RESIZE</text>
+    <rect x="314" width="143" height="43" rx="21.5" fill="#FFFFFF" fill-opacity=".10" stroke="#8CEDE3" stroke-opacity=".55"/>
+    <text x="385.5" y="27" text-anchor="middle" fill="#FFFFFF" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700">CONTROL</text>
+  </g>
+</svg>

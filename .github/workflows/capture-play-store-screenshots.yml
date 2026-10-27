@@ -1,0 +1,149 @@
+name: Prepare Play Store Assets and Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  graphics:
+    name: Generate app icon and feature graphic
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install SVG and PNG tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin imagemagick
+
+      - name: Render store graphics to required sizes
+        run: |
+          set -euo pipefail
+          mkdir -p play-store-assets
+          rsvg-convert --width 512 --height 512 --format png \
+            --output /tmp/app-icon.png store-assets/app-icon.svg
+          convert /tmp/app-icon.png -resize 512x512! -depth 8 PNG32:play-store-assets/app-icon-512x512.png
+
+          rsvg-convert --width 1024 --height 500 --format png \
+            --output /tmp/feature-graphic.png store-assets/feature-graphic.svg
+          convert /tmp/feature-graphic.png -background '#071522' -alpha remove -alpha off \
+            -resize 1024x500! -depth 8 PNG24:play-store-assets/feature-graphic-1024x500.png
+
+          file play-store-assets/*
+          identify -format '%f %wx%h %[channels]\n' play-store-assets/*
+
+      - name: Include listing copy
+        run: cp docs/play-store-listing.md play-store-assets/
+
+      - name: Upload Play Store graphics
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-floating-lock-play-store-graphics
+          path: play-store-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
+  screenshots:
+    name: Capture real app UI from Android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK for screenshot capture
+        run: gradle --no-daemon assembleDebug
+
+      - name: Capture screenshots on a Pixel 2 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: false
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect -camera-back none -camera-front none
+          script: |
+            set -euo pipefail
+            mkdir -p store-screenshots
+            APP_ID="com.dev.tinyfloatinglock.debug"
+            SERVICE_COMPONENT="$APP_ID/com.uhackmancpu.tinyfloatinglock.LockAccessibilityService"
+            ACTIVITY_COMPONENT="$APP_ID/com.uhackmancpu.tinyfloatinglock.MainActivity"
+
+            adb wait-for-device
+            for attempt in $(seq 1 12); do
+              BOOT_STATE="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+              if [ "$BOOT_STATE" = "1" ]; then break; fi
+              sleep 5
+            done
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+            adb shell wm size 1080x1920
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+            # Accessibility may be unavailable on some emulator images. Try it,
+            # but continue to capture the main app screens if enabling it fails.
+            adb shell settings put secure enabled_accessibility_services "$SERVICE_COMPONENT" || true
+            adb shell settings put secure accessibility_enabled 1 || true
+            sleep 3
+
+            adb shell am start -n "$ACTIVITY_COMPONENT"
+            sleep 4
+            adb shell screencap -p /sdcard/01-appearance-settings.png
+            adb pull /sdcard/01-appearance-settings.png store-screenshots/01-appearance-settings.png
+
+            adb shell input keyevent 3
+            sleep 2
+            adb shell screencap -p /sdcard/02-floating-lock-overlay.png
+            adb pull /sdcard/02-floating-lock-overlay.png store-screenshots/02-floating-lock-overlay.png
+
+            CX=958
+            CY=960
+            adb shell input swipe "$CX" "$CY" "$CX" "$CY" 900 || true
+            sleep 1
+            adb shell screencap -p /sdcard/03-quick-controls.png
+            adb pull /sdcard/03-quick-controls.png store-screenshots/03-quick-controls.png
+
+            adb shell input keyevent 3
+            sleep 1
+            adb shell input tap "$CX" "$CY" || true
+            sleep 1
+            adb shell screencap -p /sdcard/04-volume-indicator.png
+            adb pull /sdcard/04-volume-indicator.png store-screenshots/04-volume-indicator.png
+
+            adb shell settings put secure enabled_accessibility_services "" || true
+            adb shell settings put secure accessibility_enabled 0 || true
+            for file in store-screenshots/*.png; do
+              test -s "$file"
+              file "$file"
+            done
+
+      - name: Upload Play Store screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-floating-lock-play-store-screenshots
+          path: store-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 30

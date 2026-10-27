@@ -1,0 +1,52 @@
+name: Deploy Tiny Floating Lock Privacy Policy
+
+on:
+  push:
+    branches: ['main', 'feature/in-app-appearance-controls']
+    paths:
+      - 'site/privacy-policy.html'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      PAGES_TOKEN: ${{ secrets.PAGES_TOKEN }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      # Creating a new Pages site needs a repo-scoped token with Pages/admin access.
+      # Set PAGES_TOKEN in repository Actions secrets to let this step enable Pages.
+      - name: Enable GitHub Pages when PAGES_TOKEN is configured
+        if: ${{ env.PAGES_TOKEN != '' }}
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+          token: ${{ secrets.PAGES_TOKEN }}
+
+      # If Pages is already enabled in repository Settings, the default token is enough to deploy.
+      - name: Configure existing GitHub Pages site
+        if: ${{ env.PAGES_TOKEN == '' }}
+        uses: actions/configure-pages@v5
+
+      - name: Upload only the privacy-policy site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Publish privacy policy
+        id: deployment
+        uses: actions/deploy-pages@v4
