@@ -54,15 +54,25 @@ jobs:
           unzip -q screenshot-source/Tiny_Floating_Lock_10_HD_Recreated_Images.zip \
             -d "$PACK/screenshots"
 
-          COUNT="$(find "$PACK/screenshots" -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')"
-          test "$COUNT" = "10"
+          # Replace five recreated mockups with the genuine device screenshots uploaded on this branch.
+          REAL="store-assets/real-device-screenshots"
+          for name in 01_Tiny_Floating_Lock_HD 03_Double_Tap_Power_Menu_HD 05_Long_Press_Quick_Controls_HD 08_Appearance_Settings_HD 09_Accessibility_Setup_HD; do
+            rm -f "$PACK/screenshots/$name.png"
+            cp "$REAL/$name.jpg" "$PACK/screenshots/$name.jpg"
+          done
+          # Keep the extra Accessibility service-detail image as a supplementary real capture.
+          cp "$REAL/09_Accessibility_Setup_Detail.jpg" "$PACK/screenshots/"
 
-          identify -format '%f | %wx%h | %[channels] | %b\n' "$PACK/screenshots"/*.png \
+          COUNT="$(find "$PACK/screenshots" -maxdepth 1 -type f \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \\) | wc -l | tr -d ' ')"
+          test "$COUNT" = "11"
+
+          identify -format '%f | %wx%h | %[channels] | %b\n' \
+            "$PACK/screenshots"/*.{png,jpg,jpeg} 2>/dev/null \
             | tee "$PACK/docs/screenshot-inventory.txt"
           while IFS= read -r line; do
             case "$line" in
-              *"1080x1920"*) ;;
-              *) echo "Unexpected screenshot dimensions: $line"; exit 1 ;;
+              *"x"*) ;;
+              *) echo "Could not inspect screenshot: $line"; exit 1 ;;
             esac
           done < "$PACK/docs/screenshot-inventory.txt"
 
@@ -80,13 +90,15 @@ jobs:
           Tiny Floating Lock — Play Store upload pack
 
           This pack contains a 512x512 app icon PNG, a 1024x500 feature graphic PNG,
-          the 10 supplied 1080x1920 screenshots, listing copy, checklist and asset audit.
+          the screenshot set (five genuine device screenshots replace their matching
+          mockups; the remaining mockups and one extra Accessibility detail capture
+          are also included), listing copy, checklist and asset audit.
 
-          IMPORTANT: the 10 supplied screenshots are recreated promotional mockups,
-          not direct captures from a physical device. Check every depiction against
-          the exact signed release AAB before submission. Replace or verify the
-          Accessibility Settings mockup with a real device capture. Use only assets
-          that accurately represent the released app.
+          IMPORTANT: genuine device screenshots are included for the floating button,
+          Power Menu, quick controls, appearance settings and Accessibility Settings.
+          The Accessibility detail screenshot shows the service toggle OFF. Other
+          screenshots remain recreated promotional mockups; verify them against the
+          exact signed release AAB before submission and use only accurate assets.
 
           The AAB is not included. Do not upload the unsigned AAB. Sign the release
           bundle with the app's separate upload key, verify its signature and test
